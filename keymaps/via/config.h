@@ -49,4 +49,6 @@
 // Počet vrstev, které má QMK alokovat pro dynamickou keymapu (pro VIA).
 #define DYNAMIC_KEYMAP_LAYER_COUNT 3 
 
+
+
 #endif // VIA_ENABLE
