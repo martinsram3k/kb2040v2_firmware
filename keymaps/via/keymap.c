@@ -14,22 +14,14 @@ enum keycodes {
 // První vrstva v cyklu (vrstva 0)
 #define LAYER_CYCLE_START 0 
 // Poslední vrstva v cyklu (vrstva 3, což znamená vrstvy 0, 1, 2, 3)
-#define LAYER_CYCLE_END   3 
+#define LAYER_CYCLE_END   2
 
 // Statická proměnná pro uložení předchozího stavu vrstev.
 // Používá se pro detekci změny vrstvy.
 static uint32_t last_layer_state = 0;
 
 // Funkce pro ovládání OLED displeje (pokud je povolen OLED_ENABLE v config.h)
-#ifdef OLED_ENABLE
-bool oled_task_user(void) {
-  if (oled_on()) {
-    // Zde můžeš přidat vlastní logiku pro zobrazení textu nebo vrstvy na OLED.
-    oled_write_P(PSTR("Hello World"), false);
-  }
-  return false;
-}
-#endif // OLED_ENABLE
+
 
 // Funkce volaná po inicializaci klávesnice
 void keyboard_post_init_user(void) {
@@ -104,7 +96,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         // Zpracování pro VŠECHNY OSTATNÍ keycody.
         default:
             // Vracíme true, aby QMK zpracoval klávesu normálně (tj. odeslal ji do počítače).
-            // Zde NIKDY nevoláme haptic_play(), takže se haptika NEspustí pro žádné jiné klávesy.
+            // Zde NIKDY nevoláme haptic_play(), takže se haptika NIKDY nespustí pro žádné jiné klávesy.
             return true; 
     }
 }
@@ -132,11 +124,23 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS,
         KC_TRNS, KC_TRNS, KC_TRNS                  // KC_TRNS = transparentní klávesa
     ),
-
-    // Vrstva 3 - Další transparentní/prázdná vrstva
-    [3] = LAYOUT_martin_3x3(
-        KC_D, KC_TRNS, KC_TRNS, KC_CYCLE_LAYERS, // Klávesa pro cyklování vrstev
-        KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS,
-        KC_TRNS, KC_TRNS, KC_TRNS
-    )
 };
+
+
+#ifdef OLED_ENABLE
+
+oled_rotation_t oled_init_user(oled_rotation_t rotation) {
+    // Nastavení rotace OLED displeje, pokud je povoleno.
+    return OLED_ROTATION_270; // Definováno v config.h
+}
+
+bool oled_task_user(void) {
+  if (oled_on()) {
+
+  
+    // Zde můžeš přidat vlastní logiku pro zobrazení textu nebo vrstvy na OLED.
+    oled_write_P(PSTR("Hello World"), false);
+  }
+  return false;
+}
+#endif // OLED_ENABLE
