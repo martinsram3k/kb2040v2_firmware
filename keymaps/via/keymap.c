@@ -3,7 +3,7 @@
 // Tyto hlavičkové soubory jsou potřeba pro low-level GPIO funkce na RP2040.
 #include "hardware/gpio.h"
 
-// Hlavičkový soubor pro haptický ovladač QMK
+// Hlavičkový soubor pro haptický ovladač QMK - VRACENO ZPĚT, PROTOŽE NYNÍ CHCEME HAPTIKU OVLÁDAT
 #include "haptic.h" // Pro funkci haptic_play()
 
 // Definice vlastního keycode. QK_USER zajistí, že se nepřekrývá s existujícími keycody QMK.
@@ -17,11 +17,8 @@ enum keycodes {
 #define LAYER_CYCLE_END   2
 
 // Statická proměnná pro uložení předchozího stavu vrstev.
-// Používá se pro detekci změny vrstvy.
+// Používá se pro detekci změny vrstvy. - VRÁCENO ZPĚT, JE POTŘEBNÁ PRO PODMÍNĚNÉ SPUŠTĚNÍ HAPTIKY PŘI ZMĚNĚ VRSTVY
 static uint32_t last_layer_state = 0;
-
-// Funkce pro ovládání OLED displeje (pokud je povolen OLED_ENABLE v config.h)
-
 
 // Funkce volaná po inicializaci klávesnice
 void keyboard_post_init_user(void) {
@@ -32,9 +29,9 @@ void keyboard_post_init_user(void) {
     // Zajistíme, že pin je na nízké úrovni na začátku, aby motor nebzučel ihned.
     gpio_put(SOLENOID_PIN, 0); 
     
-    // Inicializuje haptický subsystém QMK.
+    // Inicializuje haptický subsystém QMK. - VRÁCENO ZPĚT, JE POTŘEBA PRO POUŽITÍ haptic_play()
     haptic_init(); 
-    // Inicializujeme last_layer_state s aktuálním stavem vrstev při startu.
+    // Inicializujeme last_layer_state s aktuálním stavem vrstev při startu. - VRÁCENO ZPĚT, JE POTŘEBA PRO PODMÍNĚNÉ SPUŠTĚNÍ HAPTIKY
     last_layer_state = layer_state; 
 }
 
@@ -44,14 +41,14 @@ void matrix_scan_user(void) {
 }
 
 // Tato funkce se volá POKAZDÉ, kdy dojde ke ZMĚNĚ stavu vrstev.
-// To je ideální místo pro spuštění haptiky POUZE při změně vrstvy.
+// Zde budeme spouštět haptiku POUZE při změně vrstvy.
 layer_state_t layer_state_set_user(layer_state_t state) {
     // Zavolejte původní funkci QMK pro zpracování stavu vrstev, je to důležité.
     state = default_layer_state_set_user(state);
 
     // Zkontrolujeme, zda se aktuální stav vrstev (po default_layer_state_set_user) liší od předchozího stavu.
     if (state != last_layer_state) {
-        // Pokud došlo ke změně vrstvy, spustíme haptiku.
+        // Pokud došlo ke změně vrstvy, spustíme haptiku. - PONECHÁNO, ZDE SE SPUSŤÍ HAPTIKA PŘI ZMĚNĚ VRSTVY
         haptic_play();
     }
     
@@ -70,7 +67,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             if (!record->event.pressed) { 
                 return false; // Při uvolnění klávesy nic neděláme.
             }
-            // Zde JIŽ NEBUDEME VOLAT haptic_play(), protože haptika se spustí v layer_state_set_user()
+            // Zde NEBUDEME VOLAT haptic_play(), protože haptika se spustí v layer_state_set_user()
             // až poté, co se skutečně změní vrstva.
             
             // Získáme nejvyšší aktivní vrstvu.
@@ -128,8 +125,6 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
 
 #ifdef OLED_ENABLE
-
-
 
 bool oled_task_user(void) {
   
@@ -244,31 +239,20 @@ bool oled_task_user(void) {
 
     switch (get_highest_layer(layer_state)) {
         case 0:
-            // Draw image to OLED
-oled_write_raw_P(image1, sizeof(image1));
+            // Vykreslení obrázku na OLED
+            oled_write_raw_P(image1, sizeof(image1));
             break;
         case 1:
-        oled_write_raw_P(image2, sizeof(image2));
-
+            oled_write_raw_P(image2, sizeof(image2));
             break;
         case 2:
-        oled_write_raw_P(image3, sizeof(image3));
-
+            oled_write_raw_P(image3, sizeof(image3));
             break;
         default:
-            // Or use the write_ln shortcut over adding '\n' to the end of your string
+            // Nebo použijte zkratku write_ln namísto přidávání '\n' na konec řetězce
             oled_write_ln_P(PSTR("Undefined"), false);
     }
     
     return false;
 }
 #endif
-
-
-
-
-
-
-
-
-
