@@ -9,8 +9,8 @@
 #define OLED_DISPLAY_ADDRESS 0x3C // Adresa tvého OLED displeje
 
 // Definice pinů pro I2C komunikaci s OLED displejem.
-#define I2C_SCL_PIN GP19 
-#define I2C_SDA_PIN GP10 
+#define I2C_SCL_PIN GP19 // GPIO19 je SCL
+#define I2C_SDA_PIN GP10 // GPIO10 je SDA
 
 // Vynutíme použití I2C0, i když tvé piny jsou primárně pro I2C1.
 #define I2C0_SCL_PIN I2C_SCL_PIN
@@ -37,18 +37,17 @@
 // Doporučeno: Vypnutí haptiky v režimu nízké spotřeby pro úsporu energie.
 #define HAPTIC_OFF_IN_LOW_POWER 1
 
-// NOVÉ DŮLEŽITÉ PŘÍDAVKY PRO KONTROLU HAPTIKY:
-// TYTO ZAJISTÍ, ŽE HAPTIKA SE NEBUDE SPUŠTĚT AUTOMATICKY.
-// Vypnout haptiku při stisku každé klávesy.
-#define HAPTIC_ENABLE_FEEDBACK_FOR_EVERY_KEY false 
-// Vypnout haptiku pro změny vrstev, pokud by to nějak kolidovalo,
-// ale my ji spouštíme manuálně v layer_state_set_user().
-// Zde bychom spíše očekávali, že defaultní haptika pro změnu vrstev nebude aktivní,
-// jelikož ji přebíráme v layer_state_set_user.
-// Pro jistotu bych toto ponechal jako false, pokud se objeví duplicitní vibrace.
-// #define HAPTIC_ENABLE_FEEDBACK_LAYER_CHANGE false 
+// DŮLEŽITÉ NOVÉ DEFINICE pro potlačení automatické haptiky
+// Tyto definice zajistí, že haptika se nebude spouštět automaticky
+// u různých kategorií kláves, ale pouze tam, kde ji voláte ručně.
+#define NO_HAPTIC_MOD         // Zakáže haptiku pro modifikátory a momentární vrstvy/modifikátory
+#define NO_HAPTIC_ALPHA       // Zakáže haptiku pro abecední klávesy (A-Z)
+#define NO_HAPTIC_PUNCTUATION // Zakáže haptiku pro interpunkční klávesy
+#define NO_HAPTIC_LOCKKEYS    // Zakáže haptiku pro Caps Lock, Scroll Lock, Num Lock
+#define NO_HAPTIC_NAV         // Zakáže haptiku pro navigační klávesy
+#define NO_HAPTIC_NUMERIC     // Zakáže haptiku pro numerické klávesy (0-9)
 
 // Počet vrstev, které má QMK alokovat pro dynamickou keymapu (pro VIA).
-#define DYNAMIC_KEYMAP_LAYER_COUNT 3 
+#define DYNAMIC_KEYMAP_LAYER_COUNT 4
 
 #endif // VIA_ENABLE
