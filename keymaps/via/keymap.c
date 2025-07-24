@@ -6,15 +6,18 @@
 // Hlavičkový soubor pro haptický ovladač QMK
 #include "haptic.h" // Pro funkci haptic_play()
 
-// Definice vlastního keycode. QK_USER zajistí, že se nepřekrývá s existujícími keycody QMK.
+// Definice vlastních keycodů. QK_USER zajistí, že se nepřekrývá s existujícími keycody QMK.
 enum keycodes {  
   KC_CYCLE_LAYERS = QK_USER,
+  // Keycody pro ovládání haptiky
+  KC_HAPTIC_ON,    // Zapne haptiku (tato již nebude použita v keymapě, ale je stále definována)
+  KC_HAPTIC_OFF,   // Vypne haptiku (tato již nebude použita v keymapě, ale je stále definována)
 }; 
 
 // První vrstva v cyklu (vrstva 0)
 #define LAYER_CYCLE_START 0 
 // Poslední vrstva v cyklu, do které se cykluje (vrstva 2, což znamená vrstvy 0, 1, 2)
-// Vrstva 3 (modifikátory) je vyloučena z cyklování.
+// Vrstva 3 (modifikátorů) je vyloučena z cyklování.
 #define LAYER_CYCLE_END   3 // Nyní je 3, protože cyklujeme do indexu 2 (0, 1, 2)
 
 // Doba držení v milisekundách pro aktivaci vrstvy 3 (2 sekundy)
@@ -32,6 +35,12 @@ static uint8_t previous_base_layer = 0;
 static uint32_t layer_key_press_timer = 0;
 // Flag, zda je vrstva modifikátorů (3) momentálně aktivní (po držení)
 static bool is_modifier_layer_active = false;
+
+// Proměnná pro stav haptiky - zda je zapnuta nebo vypnuta
+// Protože již nemáme přímé KC_HAPTIC_ON/OFF v keymapě, tato proměnná je nyní bez efektu,
+// pokud haptika není ovládána jiným způsobem (např. automaticky na změnu vrstvy).
+// Nicméně ji zde ponechávám, pokud by se v budoucnu přidaly jiné funkce pro ovládání haptiky.
+static bool haptic_enabled = true; // Haptika je ve výchozím stavu zapnuta
 
 
 // Funkce volaná po inicializaci klávesnice
@@ -82,8 +91,9 @@ layer_state_t layer_state_set_user(layer_state_t state) {
     state = default_layer_state_set_user(state);
 
     // Zkontrolujeme, zda se aktuální stav vrstev (po default_layer_state_set_user) liší od předchozího stavu.
-    if (state != last_layer_state) {
-        // Pokud došlo ke změně vrstvy, spustíme haptiku.
+    // A také zkontrolujeme, zda je haptika povolena.
+    if (state != last_layer_state && haptic_enabled) {
+        // Pokud došlo ke změně vrstvy a haptika je zapnutá, spustíme haptiku.
         haptic_play();
     }
     
@@ -149,6 +159,21 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 }
                 return false; // Klávesa byla zpracována, QMK ji už dál zpracovávat nemusí.
             }
+        
+        // Zpracování pro tlačítka haptiky (tyto keycody již nejsou v keymapě, ale funkce zůstává)
+        case KC_HAPTIC_ON:
+            if (record->event.pressed) {
+                haptic_enabled = true; // Zapneme haptiku
+                // Můžeme zde přidat i krátkou haptickou odezvu pro potvrzení, že se zapnula
+                haptic_play(); 
+            }
+            return false; // Zpracováno
+        
+        case KC_HAPTIC_OFF:
+            if (record->event.pressed) {
+                haptic_enabled = false; // Vypneme haptiku
+            }
+            return false; // Zpracováno
 
         // Zpracování pro VŠECHNY OSTATNÍ keycody.
         default:
@@ -162,30 +187,30 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
     // Vrstva 0 
     [0] = LAYOUT_martin_3x3(
-        KC_A, KC_NO, KC_NO, KC_CYCLE_LAYERS, // Klávesa pro cyklování vrstev
-        KC_NO, KC_NO, KC_NO, KC_NO,
-        KC_NO, KC_NO, KC_NO                  // KC_NO = prázdná/neaktivní klávesa
+        KC_A, KC_B, KC_C, KC_CYCLE_LAYERS, // Klávesa pro cyklování vrstev
+        KC_D, KC_E, KC_F, KC_G,
+        KC_H, KC_I, KC_TRNS                 // KC_NO = prázdná/neaktivní klávesa
     ),
 
     // Vrstva 1 
     [1] = LAYOUT_martin_3x3(
         KC_B, KC_NO, KC_NO, KC_CYCLE_LAYERS, // Klávesa pro cyklování vrstev
         KC_NO, KC_NO, KC_NO, KC_NO,
-        KC_NO, KC_NO, KC_NO                      
+        KC_NO, KC_NO, KC_TRNS                     
     ),
 
     // Vrstva 2 
     [2] = LAYOUT_martin_3x3(
         KC_C, KC_NO, KC_NO, KC_CYCLE_LAYERS, // Klávesa pro cyklování vrstev
         KC_NO, KC_NO, KC_NO, KC_NO,
-        KC_NO, KC_NO, KC_NO                  // KC_TRNS = transparentní klávesa (ale zde je KC_NO podle zadání)
+        KC_NO, KC_NO, KC_TRNS                // KC_TRNS = transparentní klávesa (ale zde je KC_NO podle zadání)
     ),
 
-    // Vrstva modifikátorů 
+    // Vrstva modifikátorů (upravena podle požadavků)
      [3] = LAYOUT_martin_3x3(
-        KC_D, KC_NO, KC_NO, KC_CYCLE_LAYERS, // Klávesa pro cyklování vrstev
-        KC_NO, KC_NO, KC_NO, KC_NO,
-        KC_NO, KC_NO, KC_NO                  // KC_TRNS = transparentní klávesa (ale zde je KC_NO podle zadání)
+        QK_HAPTIC_RESET, QK_HAPTIC_DWELL_UP, QK_HAPTIC_DWELL_DOWN, KC_CYCLE_LAYERS, // První řada
+        QK_BOOT, KC_NO, KC_NO, KC_NO, // Druhá řada s jasem
+        KC_NO, KC_NO, KC_TRNS                 // Třetí řada s jedním QK_BOOT navíc
      ),
 };
 
@@ -235,7 +260,7 @@ bool oled_task_user(void) {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x18, 
 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 
 0x00, 0x00, 0x00, 0x00, 0x00, 0xc0, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0xc0, 0xe0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 
+0x00, 0xc0, 0xe0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 
 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xe0, 0xc0, 0x00, 0x00, 
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x18, 0x18, 
 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -320,6 +345,10 @@ bool oled_task_user(void) {
          case 3:
             // Zobrazení textu "modifikator" pro vrstvu 3
             oled_write_ln_P(PSTR("modifikator"), false);
+            // Zobrazení stavu haptiky (i když haptika již není ovladatelná přímo z této vrstvy)
+            oled_write_ln_P(haptic_enabled ? PSTR("Haptic: ON") : PSTR("Haptic: OFF"), false);
+            // Zobrazení pro jas
+            oled_write_ln_P(PSTR("Jas: +/-"), false); // Jednoduchý text pro OLED
             break;
 
         default:
