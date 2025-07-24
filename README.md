@@ -116,6 +116,8 @@ The firmware provides the following software functionalities:
 <div style="width: 80%; margin: auto; display: flex; flex-wrap: wrap; gap: 20px; " >
 
 <img style="border-radius: 25px; width: 30%;" src="pic/1.png">
+<img style="border-radius: 25px; width: 30%;" src="https://placehold.co/600x400">
+<img style="border-radius: 25px; width: 30%;" src="https://placehold.co/600x400">
 
 
 
