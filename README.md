@@ -112,11 +112,15 @@ The firmware provides the following software functionalities:
 
 ## 🖼️ Photo Gallery 📸
 
-Here you can insert your photos of the macropad.
 
-<div style="width: 80%; margin: auto; display: flex; flex-wrap: wrap; gap: 20px; " >
+<div style="width: 80%; margin: auto; columns: 3 200px; colum-gap: 20px; " >
 
-<img style="border-radius: 25px; width: 30%;" src="pic/1.png">
+<img style="border-radius: 25px; width: 200px; display: block; margin-bottom: 20px;" src="pic/1.png">
+<img style="border-radius: 25px; width: 200px; display: block; margin-bottom: 20px;" src="https://placehold.co/200x400">
+<img style="border-radius: 25px; width: 200px; display: block; margin-bottom: 20px;" src="https://placehold.co/200x200">
+<img style="border-radius: 25px; width: 200px; display: block; margin-bottom: 20px;" src="https://placehold.co/200x500">
+<img style="border-radius: 25px; width: 200px; display: block; margin-bottom: 20px;" src="https://placehold.co/200x400">
+<img style="border-radius: 25px; width: 200px; display: block; margin-bottom: 20px;" src="https://placehold.co/200x400">
 
 
 
