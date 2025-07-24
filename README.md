@@ -113,7 +113,7 @@ The firmware provides the following software functionalities:
 ## 🖼️ Photo Gallery 📸
 
 
-<div style="width: 80%; margin: auto; columns: 3 200px; colum-gap: 20px; " >
+<div style="width: fit-content; margin: auto; columns: 3 200px; colum-gap: 20px; " >
 
 <img style="border-radius: 25px; width: 200px; display: block; margin-bottom: 20px;" src="pic/1.png">
 <img style="border-radius: 25px; width: 200px; display: block; margin-bottom: 20px;" src="https://placehold.co/200x400">
