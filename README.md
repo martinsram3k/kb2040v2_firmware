@@ -116,11 +116,8 @@ Here you can insert your photos of the macropad.
 
 <div style="width: 80%; margin: auto; display: flex; flex-wrap: wrap; gap: 20px; " >
 
-* <img style="border-radius: 20px;" src="pic/1.png">
-* <img style="border-radius: 20px;" src="pic/">
-* <img style="border-radius: 20px;" src="pic/">
-* <img style="border-radius: 20px;" src="pic/">
-* <img style="border-radius: 20px;" src="pic/">
+<img style="border-radius: 20px; width: 30%;" src="pic/1.png">
+
 
 
 </div>
