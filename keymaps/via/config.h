@@ -16,9 +16,10 @@
 #define I2C0_SCL_PIN I2C_SCL_PIN
 #define I2C0_SDA_PIN I2C_SDA_PIN
 
-#define OLED_FADE_OUT 1000
-#define OLED_TIMEOUT 10000
-#define OLED_BRIGHTNESS 125
+#define OLED_FADE_OUT 2000
+#define OLED_TIMEOUT 20000
+#define OLED_BRIGHTNESS 255
+
 
 #define BOOTMAGIC_ROW 0
 #define BOOTMAGIC_COLUMN 0
@@ -29,7 +30,7 @@
 // #define SOLENOID_PIN_ACTIVE_LOW // Důležité: Tento řádek MUSÍ zůstat ZAKOMENTOVANÝ
 
 // Výchozí doba, po kterou je motor aktivní při spuštění haptiky (v ms).
-#define SOLENOID_DEFAULT_DWELL 1
+#define SOLENOID_DEFAULT_DWELL 20
 
 // Minimální a maximální doba dwell, kterou lze nastavit.
 #define SOLENOID_MIN_DWELL 1
