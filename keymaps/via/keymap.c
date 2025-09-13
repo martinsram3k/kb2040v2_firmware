@@ -6,6 +6,7 @@
 // Hlavičkový soubor pro haptický ovladač QMK
 #include "haptic.h" // Pro funkci haptic_play()
 
+// Def
 // Definice vlastních keycodů. QK_USER zajistí, že se nepřekrývá s existujícími keycody QMK.
 enum keycodes {  
   KC_CYCLE_LAYERS = QK_USER,
