@@ -195,14 +195,14 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
     // Vrstva 1 
     [1] = LAYOUT_martin_3x3(
-        KC_B, KC_NO, KC_NO, KC_CYCLE_LAYERS, // Klávesa pro cyklování vrstev
+        KC_NO, KC_NO, KC_NO, KC_CYCLE_LAYERS, // Klávesa pro cyklování vrstev
         KC_NO, KC_NO, KC_NO, KC_NO,
         KC_NO, KC_NO, KC_TRNS                     
     ),
 
     // Vrstva 2 
     [2] = LAYOUT_martin_3x3(
-        KC_C, KC_NO, KC_NO, KC_CYCLE_LAYERS, // Klávesa pro cyklování vrstev
+        KC_NO, KC_NO, KC_NO, KC_CYCLE_LAYERS, // Klávesa pro cyklování vrstev
         KC_NO, KC_NO, KC_NO, KC_NO,
         KC_NO, KC_NO, KC_TRNS                // KC_TRNS = transparentní klávesa (ale zde je KC_NO podle zadání)
     ),
