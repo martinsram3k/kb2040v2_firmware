@@ -11,8 +11,6 @@
 enum keycodes {  
   KC_CYCLE_LAYERS = QK_USER,
   // Keycody pro ovládání haptiky
-  KC_HAPTIC_ON,    // Zapne haptiku (tato již nebude použita v keymapě, ale je stále definována)
-  KC_HAPTIC_OFF,   // Vypne haptiku (tato již nebude použita v keymapě, ale je stále definována)
 }; 
 
 // První vrstva v cyklu (vrstva 0)
@@ -160,23 +158,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 }
                 return false; // Klávesa byla zpracována, QMK ji už dál zpracovávat nemusí.
             }
-        
-        // Zpracování pro tlačítka haptiky (tyto keycody již nejsou v keymapě, ale funkce zůstává)
-        case KC_HAPTIC_ON:
-            if (record->event.pressed) {
-                haptic_enabled = true; // Zapneme haptiku
-                // Můžeme zde přidat i krátkou haptickou odezvu pro potvrzení, že se zapnula
-                haptic_play(); 
-            }
-            return false; // Zpracováno
-        
-        case KC_HAPTIC_OFF:
-            if (record->event.pressed) {
-                haptic_enabled = false; // Vypneme haptiku
-            }
-            return false; // Zpracováno
 
-        // Zpracování pro VŠECHNY OSTATNÍ keycody.
         default:
             // Vracíme true, aby QMK zpracoval klávesu normálně (tj. odeslal ji do počítače).
             return true; 
