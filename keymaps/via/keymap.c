@@ -1,232 +1,164 @@
 #include QMK_KEYBOARD_H
 
-// Tyto hlavičkové soubory jsou potřeba pro low-level GPIO funkce na RP2040.
 #include "hardware/gpio.h"
 
-int display_design = 0; // Proměnná pro sledování aktuálního zobrazení na OLED
+int display_design = 0; 
 
-// Hlavičkový soubor pro haptický ovladač QMK
-#include "haptic.h" // Pro funkci haptic_play()
+enum keycodes {  //vlastní keycody
+  KC_CYCLE_LAYERS = QK_USER, // keycode pro přepínání vrstev
+  KC_DISPLAY_DESIGN, // keycode pro zmeniu designu displeje
 
-// Def
-// Definice vlastních keycodů. QK_USER zajistí, že se nepřekrývá s existujícími keycody QMK.
-enum keycodes {  
-  KC_CYCLE_LAYERS = QK_USER,
-  KC_DISPLAY_DESIGN, // Keycode pro přepínání designu na OLED
-  // Keycody pro ovládání haptiky
 }; 
 
-// První vrstva v cyklu (vrstva 0)
-#define LAYER_CYCLE_START 0 
-// Poslední vrstva v cyklu, do které se cykluje (vrstva 2, což znamená vrstvy 0, 1, 2)
-// Vrstva 3 (modifikátorů) je vyloučena z cyklování.
-#define LAYER_CYCLE_END   3 // Nyní je 3, protože cyklujeme do indexu 2 (0, 1, 2)
+#define LAYER_CYCLE_START 0 // zažneme na první vrstvě
 
-// Doba držení v milisekundách pro aktivaci vrstvy 3 (2 sekundy)
-#define HOLD_MODIFIER_LAYER_DELAY 2000 
+#define LAYER_CYCLE_END   3 // končíme na čtvrté vrstvě
 
-// Statická proměnná pro uložení předchozího stavu vrstev.
-// Používá se pro detekci změny vrstvy pro haptiku.
+#define HOLD_MODIFIER_LAYER_DELAY 2000 // zpoždění pro aktivaci settings vrstvy (v ms)
+
 static uint32_t last_layer_state = 0;
 
-// Nová statická proměnná pro uložení vrstvy, na které jsme byli před stiskem KC_CYCLE_LAYERS.
-// Používá se pro správné cyklování po klepnutí.
 static uint8_t previous_base_layer = 0;
 
-// Čas, kdy byla klávesa KC_CYCLE_LAYERS stisknuta
 static uint32_t layer_key_press_timer = 0;
-// Flag, zda je vrstva modifikátorů (3) momentálně aktivní (po držení)
+
 static bool is_modifier_layer_active = false;
 
-// Proměnná pro stav haptiky - zda je zapnuta nebo vypnuta
-// Protože již nemáme přímé KC_HAPTIC_ON/OFF v keymapě, tato proměnná je nyní bez efektu,
-// pokud haptika není ovládána jiným způsobem (např. automaticky na změnu vrstvy).
-// Nicméně ji zde ponechávám, pokud by se v budoucnu přidaly jiné funkce pro ovládání haptiky.
-static bool haptic_enabled = true; // Haptika je ve výchozím stavu zapnuta
+static bool haptic_enabled = true; 
 
-
-// Funkce volaná po inicializaci klávesnice
 void keyboard_post_init_user(void) {
-    // Nastavení pinu SOLENOID_PIN jako GPIO výstupu.
-    // SOLENOID_PIN je definován v config.h
+
     gpio_set_function(SOLENOID_PIN, GPIO_FUNC_SIO);
     gpio_set_dir(SOLENOID_PIN, GPIO_OUT);
-    // Zajistíme, že pin je na nízké úrovni na začátku, aby motor nebzučel ihned.
+
     gpio_put(SOLENOID_PIN, 0); 
-    
-    // Inicializuje haptický subsystém QMK.
+
     haptic_init(); 
-    // Inicializujeme last_layer_state s aktuálním stavem vrstev při startu.
+
     last_layer_state = layer_state; 
-    // Inicializujeme previous_base_layer s aktuální vrstvou.
-    // Důležité: Vrstva 3 není "základní" vrstva, takže pokud jsme náhodou na ní
-    // při startu (např. po hot-reloadu), vrátíme se na 0.
+
     uint8_t current_highest = get_highest_layer(layer_state);
-    if (current_highest == 3) { // Pokud je vrstva 3 aktivní při startu
-        previous_base_layer = LAYER_CYCLE_START; // Nastavíme na start cyklu
-        layer_move(LAYER_CYCLE_START); // A přesuneme se na ni
+    if (current_highest == 3) { 
+        previous_base_layer = LAYER_CYCLE_START; 
+        layer_move(LAYER_CYCLE_START); 
     } else {
         previous_base_layer = current_highest;
     }
 }
 
-// Tato funkce se volá v každém cyklu skenování matice.
-// Zde budeme kontrolovat časovač pro aktivaci vrstvy 3.
 void matrix_scan_user(void) {
-    // Pokud je klávesa KC_CYCLE_LAYERS stisknuta a vrstva 3 ještě není aktivní,
-    // a uplynula doba HOLD_MODIFIER_LAYER_DELAY
-    if (layer_key_press_timer > 0 && 
+
+    if (layer_key_press_timer > 0 &&  
         !is_modifier_layer_active && 
         timer_elapsed(layer_key_press_timer) >= HOLD_MODIFIER_LAYER_DELAY) {
-        
-        // Aktivujeme vrstvu modifikátorů (vrstva 3)
+
         layer_on(3);
-        // Nastavíme flag, že je vrstva 3 aktivní
+
         is_modifier_layer_active = true;
     }
 }
 
-// Tato funkce se volá POKAZDÉ, kdy dojde ke ZMĚNĚ stavu vrstev.
-// Zde budeme spouštět haptiku POUZE při změně vrstvy.
 layer_state_t layer_state_set_user(layer_state_t state) {
-    // Zavolejte původní funkci QMK pro zpracování stavu vrstev, je to důležité.
+
     state = default_layer_state_set_user(state);
 
-    // Zkontrolujeme, zda se aktuální stav vrstev (po default_layer_state_set_user) liší od předchozího stavu.
-    // A také zkontrolujeme, zda je haptika povolena.
     if (state != last_layer_state && haptic_enabled) {
-        // Pokud došlo ke změně vrstvy a haptika je zapnutá, spustíme haptiku.
+
         haptic_play();
     }
-    
-    // Uložíme aktuální stav vrstev pro další porovnání.
+
     last_layer_state = state;
 
     return state;
 }
 
-
-// Toto je hlavní funkce pro zpracování stisku/uvolnění kláves.
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
-
         switch (keycode) {
-        case KC_DISPLAY_DESIGN:
+        case KC_DISPLAY_DESIGN: // změna designu displeje
             if (record->event.pressed) {
                 display_design = (display_design + 1) % 4;
             }
             return false;
-      
-    
 
-    // Zpracování logiky podle stisknutého keycode.
-    
-        case KC_CYCLE_LAYERS: 
+        case KC_CYCLE_LAYERS: // přepínání vrstev
             if (record->event.pressed) {
-                // Klávesa stisknuta
-                // Uložíme čas stisku.
+
                 layer_key_press_timer = timer_read();
-                // Resetujeme flag aktivní modifikátorové vrstvy.
+
                 is_modifier_layer_active = false;
 
-                // Uložíme aktuální základní vrstvu před případnou aktivací vrstvy modifikátorů.
                 uint8_t current_highest = get_highest_layer(layer_state);
-                if (current_highest != 3) { // Pouze pokud nejsme na vrstvě 3
+                if (current_highest != 3) { 
                     previous_base_layer = current_highest;
                 }
-                
-                return false; // Klávesa byla zpracována, neposílat dál do QMK.
+
+                return false; 
             } else {
-                // Klávesa uvolněna
-                // Resetujeme časovač pro tuto klávesu.
+
                 layer_key_press_timer = 0; 
-                
-                // Pokud byla vrstva modifikátorů aktivní (byla držena dostatečně dlouho), vypneme ji.
+
                 if (is_modifier_layer_active) {
                     layer_off(3);
-                    is_modifier_layer_active = false; // Resetujeme flag
+                    is_modifier_layer_active = false; 
                 } else {
-                    // Pokud vrstva modifikátorů NEBYLA aktivní (klávesa byla uvolněna před prodlevou),
-                    // znamená to, že to byl "tap" nebo "rychlý hold", který by měl cyklovat.
-                    
-                    // Provedeme cyklování vrstev.
-                    // Cyklujeme z vrstvy, na které jsme byli před tapem/holdem.
+
                     uint8_t current_layer_for_cycle = previous_base_layer; 
 
-                    // Zkontrolujeme, zda jsme v definovaném rozsahu cyklování (0, 1, 2).
-                    // Pokud je current_layer_for_cycle mimo rozsah (např. 3),
-                    // vrátíme se na začátek cyklu, protože na 3 se necykluje.
                     if (current_layer_for_cycle >= LAYER_CYCLE_END || current_layer_for_cycle < LAYER_CYCLE_START) { 
                         current_layer_for_cycle = LAYER_CYCLE_START; 
                     }
-                    
-                    // Vypočítáme další vrstvu v cyklu (pouze 0, 1, 2).
+
                     uint8_t next_layer = current_layer_for_cycle + 1; 
-                    // Pokud jsme na konci cyklu (vrstva 2), vrátíme se na začátek (vrstvu 0).
-                    if (next_layer >= LAYER_CYCLE_END) { // Nyní LAYER_CYCLE_END je 3, takže když next_layer dosáhne 3, cyklujeme na 0.
+
+                    if (next_layer >= LAYER_CYCLE_END) { 
                         next_layer = LAYER_CYCLE_START; 
                     }
-                    
-                    // Přesuneme klávesnici na vypočítanou další vrstvu.
-                    // Tato funkce způsobí volání layer_state_set_user(), kde se haptika spustí.
+
                     layer_move(next_layer); 
                 }
-                return false; // Klávesa byla zpracována, QMK ji už dál zpracovávat nemusí.
+                return false; 
             }
 
         default:
-            // Vracíme true, aby QMK zpracoval klávesu normálně (tj. odeslal ji do počítače).
+
             return true; 
     }
 }
 
-// Definice layoutů klávesnice pro jednotlivé vrstvy.
-const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
+const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = { // definice vrstev
 
-    // Vrstva 0 
-    [0] = LAYOUT_martin_3x3(
-        KC_A, KC_B, KC_C, KC_CYCLE_LAYERS, // Klávesa pro cyklování vrstev
+    [0] = LAYOUT_martin_3x3( // základní vrstva
+        KC_A, KC_B, KC_C, KC_CYCLE_LAYERS, 
         KC_D, KC_E, KC_F, KC_G,
-        KC_H, KC_I, KC_TRNS                 // KC_NO = prázdná/neaktivní klávesa
+        KC_H, KC_I, KC_TRNS                 
     ),
 
-    // Vrstva 1 
-    [1] = LAYOUT_martin_3x3(
-        KC_NO, KC_NO, KC_NO, KC_CYCLE_LAYERS, // Klávesa pro cyklování vrstev
+    [1] = LAYOUT_martin_3x3( // druhá vrstva
+        KC_NO, KC_NO, KC_NO, KC_CYCLE_LAYERS, 
         KC_NO, KC_NO, KC_NO, KC_NO,
         KC_NO, KC_NO, KC_TRNS                     
     ),
 
-    // Vrstva 2 
-    [2] = LAYOUT_martin_3x3(
-        KC_NO, KC_NO, KC_NO, KC_CYCLE_LAYERS, // Klávesa pro cyklování vrstev
+    [2] = LAYOUT_martin_3x3( // třetí vrstva
+        KC_NO, KC_NO, KC_NO, KC_CYCLE_LAYERS, 
         KC_NO, KC_NO, KC_NO, KC_NO,
-        KC_NO, KC_NO, KC_TRNS                // KC_TRNS = transparentní klávesa (ale zde je KC_NO podle zadání)
+        KC_NO, KC_NO, KC_TRNS                
     ),
 
-    // Vrstva modifikátorů (upravena podle požadavků)
-     [3] = LAYOUT_martin_3x3(
-        QK_HAPTIC_RESET, QK_HAPTIC_DWELL_UP, QK_HAPTIC_DWELL_DOWN, KC_CYCLE_LAYERS, // První řada
-        KC_DISPLAY_DESIGN, KC_NO, KC_NO, KC_NO, // Druhá řada s jasem
-        KC_NO, QK_BOOT, KC_TRNS                 // Třetí řada s jedním QK_BOOT navíc
+     [3] = LAYOUT_martin_3x3( // settings vrstva
+        QK_HAPTIC_RESET, QK_HAPTIC_DWELL_UP, QK_HAPTIC_DWELL_DOWN, KC_CYCLE_LAYERS, 
+        KC_DISPLAY_DESIGN, KC_NO, KC_NO, KC_NO, 
+        KC_NO, QK_BOOT, KC_TRNS                 
      ),
 };
 
-
 #ifdef OLED_ENABLE
 
-bool oled_task_user(void) {
+bool oled_task_user(void) { // definice obázku pro OLED
 
+static const char image11 [] PROGMEM = { // vrstva 1 design 1
 
-  
-
-// ====================================================================
-// ŘÁDKA 1 (B=1): image11, image21, image31, image41
-// ====================================================================
-
-// '1-1' obrazek: image11
-static const char image11 [] PROGMEM = {
-// '1-1', 128x32px
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0xe0, 0xe0, 0x00, 0x00, 0x10, 
 0x30, 0x38, 0x38, 0x38, 0x38, 0x38, 0x30, 0x00, 0x00, 0x00, 0x00, 0x10, 0x30, 0x38, 0x38, 0x38, 
 0x38, 0x38, 0x30, 0x30, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -261,9 +193,8 @@ static const char image11 [] PROGMEM = {
 0x0f, 0x0f, 0x0f, 0x0f, 0x07, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 };
 
-// '2-1' obrazek: image21
-static const char image21 [] PROGMEM = {
-// '2-1', 128x32px
+static const char image21 [] PROGMEM = { // vrstva 2 design 1
+
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0xc0, 0xc0, 0x00, 0x00, 0x20, 
 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x00, 0x00, 0x00, 0x00, 0x20, 0x30, 0x30, 0x30, 0x30, 
 0x30, 0x30, 0x70, 0x70, 0x60, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -298,9 +229,8 @@ static const char image21 [] PROGMEM = {
 0x00, 0x00, 0x00, 0x0f, 0x0f, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 };
 
-// '3-1' obrazek: image31
-static const char image31 [] PROGMEM = {
-// '3-1', 128x32px
+static const char image31 [] PROGMEM = { // vrstva 3 design 1
+
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0xe0, 0xf0, 0xf0, 0xf0, 0xf0, 
 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 
 0xf0, 0xf0, 0xf0, 0xf0, 0xe0, 0xe0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -335,9 +265,8 @@ static const char image31 [] PROGMEM = {
 0x00, 0x00, 0x00, 0x0f, 0x07, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 };
 
-// '4-1' obrazek: image41
-static const char image41 [] PROGMEM = {
-// 'S-1', 128x32px
+static const char image41 [] PROGMEM = { // vrstva 4 design 1
+
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0xe0, 0xe0, 0xf0, 0xf0, 0xf0, 
 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 
 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 
@@ -372,13 +301,8 @@ static const char image41 [] PROGMEM = {
 0x1f, 0x1f, 0x1f, 0x0f, 0x0f, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 };
 
-// ====================================================================
-// ŘÁDKA 2 (B=2): image12, image22, image32, image42
-// ====================================================================
+static const char image12 [] PROGMEM = { // vrstva 1 design 2
 
-// '1-2' obrazek: image12
-static const char image12 [] PROGMEM = {
-// '1-2', 128x32px
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -413,9 +337,8 @@ static const char image12 [] PROGMEM = {
 0xfe, 0xfe, 0xfe, 0xfe, 0xfc, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 
 };
 
-// '2-2' obrazek: image22
-static const char image22 [] PROGMEM = {
-// '2-2', 128x32px
+static const char image22 [] PROGMEM = { // vrstva 2 design 2
+
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -450,9 +373,8 @@ static const char image22 [] PROGMEM = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 };
 
-// '3-2' obrazek: image32
-static const char image32 [] PROGMEM = {
-// '3-2', 128x32px
+static const char image32 [] PROGMEM = { // vrstva 3 design 2
+
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -487,9 +409,8 @@ static const char image32 [] PROGMEM = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 };
 
-// '4-2' obrazek: image42
-static const char image42 [] PROGMEM = {
-// 'S-2', 128x32px
+static const char image42 [] PROGMEM = { // vrstva 4 design 2
+
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -524,13 +445,8 @@ static const char image42 [] PROGMEM = {
 0xf8, 0xf8, 0xf8, 0xf8, 0xf0, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 };
 
-// ====================================================================
-// ŘÁDKA 3 (B=3): image13, image23, image33, image43
-// ====================================================================
+static const char image13 [] PROGMEM = { // vrstva 1 design 3
 
-// '1-3' obrazek: image13
-static const char image13 [] PROGMEM = {
-// '1-3', 128x32px
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -565,9 +481,8 @@ static const char image13 [] PROGMEM = {
 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x80, 
 };
 
-// '2-3' obrazek: image23
-static const char image23 [] PROGMEM = {
-// '2-3', 128x32px
+static const char image23 [] PROGMEM = { // vrstva 2 design 3
+
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 
@@ -602,9 +517,8 @@ static const char image23 [] PROGMEM = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 };
 
-// '3-3' obrazek: image33
-static const char image33 [] PROGMEM = {
-// '3-3', 128x32px
+static const char image33 [] PROGMEM = { // vrstva 3 design 3
+
 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -639,9 +553,8 @@ static const char image33 [] PROGMEM = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 };
 
-// '4-3' obrazek: image43
-static const char image43 [] PROGMEM = {
-// 'S-3', 128x32px
+static const char image43 [] PROGMEM = { // vrstva 4 design 3
+
 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 
 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 
 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 
@@ -676,13 +589,8 @@ static const char image43 [] PROGMEM = {
 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
 };
 
-// ====================================================================
-// ŘÁDKA 4 (B=4): image14, image24, image34, image44 (Nově přidaná řádka)
-// ====================================================================
+static const char image14 [] PROGMEM = { // vrstva 1 design 4
 
-// '1-4' obrazek: image14
-static const char image14 [] PROGMEM = {
-// '1-4', 128x32px
 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x1f, 0x1f, 0xff, 0xff, 0xff, 
 0xcf, 0xc7, 0xc7, 0xc7, 0xc7, 0xc7, 0xcf, 0xef, 0xff, 0xff, 0xff, 0xff, 0xcf, 0xc7, 0xc7, 0xc7, 
 0xc7, 0xc7, 0xc7, 0xcf, 0xcf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
@@ -717,9 +625,8 @@ static const char image14 [] PROGMEM = {
 0xf0, 0xf0, 0xf0, 0xf0, 0xf8, 0xfc, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
 };
 
-// '2-4' obrazek: image24
-static const char image24 [] PROGMEM = {
-// '2-4', 128x32px
+static const char image24 [] PROGMEM = { // vrstva 2 design 4
+
 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x3f, 0x3f, 0xff, 0xff, 0xff, 
 0xcf, 0xcf, 0xcf, 0xcf, 0xcf, 0xcf, 0xcf, 0xdf, 0xff, 0xff, 0xff, 0xff, 0xcf, 0xcf, 0xcf, 0xcf, 
 0xcf, 0xcf, 0xcf, 0x8f, 0x9f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
@@ -754,9 +661,8 @@ static const char image24 [] PROGMEM = {
 0xff, 0xff, 0xff, 0xf1, 0xf0, 0xf8, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
 };
 
-// '3-4' obrazek: image34
-static const char image34 [] PROGMEM = {
-// '3-4', 128x32px
+static const char image34 [] PROGMEM = { // vrstva 3 design 4
+
 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x1f, 0x0f, 0x0f, 0x0f, 0x0f, 
 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 
 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x1f, 0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
@@ -791,9 +697,8 @@ static const char image34 [] PROGMEM = {
 0xff, 0xff, 0xff, 0xf9, 0xf8, 0xfc, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
 };
 
-// '4-4' obrazek: image44
-static const char image44 [] PROGMEM = {
-// 'S-4', 128x32px
+static const char image44 [] PROGMEM = { // vrstva 4 design 4
+
 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x3f, 0x1f, 0x0f, 0x0f, 0x0f, 
 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 
 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 
@@ -827,117 +732,109 @@ static const char image44 [] PROGMEM = {
 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 
 0xe0, 0xe0, 0xe0, 0xf0, 0xf0, 0xf8, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
 
-
-
-
-
         };   
 
-
-    // Komentář: Vykreslování bitmapy na OLED displej na základě aktivní vrstvy a zvoleného designu.
-
-switch (get_highest_layer(layer_state)) {
+switch (get_highest_layer(layer_state)) { // zjisti, která vrstva je aktivní
     case 0:
-        // Vykreslení obrázku pro vrstvu 0
-        if (display_design == 0) { 
-            // Vykreslí image11 a zjistí jeho velikost
+
+        if (display_design == 0) {  
+
             oled_write_raw_P(image11, sizeof(image11));
         } 
 
         if (display_design == 1) { 
-            // Vykreslí image12 a zjistí jeho velikost
+
             oled_write_raw_P(image12, sizeof(image12));
         }
 
         if (display_design == 2) { 
-            // Vykreslí image13 a zjistí jeho velikost
+
             oled_write_raw_P(image13, sizeof(image13));
         }
 
         if (display_design == 3) { 
-            // Vykreslí image14 a zjistí jeho velikost
+
             oled_write_raw_P(image14, sizeof(image14));
         }
-        
+
         break;
 
     case 1:
-        // Vykreslení obrázku pro vrstvu 1
+
         if (display_design == 0) { 
-            // Vykreslí image21 a zjistí jeho velikost
+
             oled_write_raw_P(image21, sizeof(image21));
         }
 
         if (display_design == 1) { 
-            // Vykreslí image22 a zjistí jeho velikost
+
             oled_write_raw_P(image22, sizeof(image22));
         }
 
         if (display_design == 2) { 
-            // Vykreslí image23 a zjistí jeho velikost
+
             oled_write_raw_P(image23, sizeof(image23));
         }
 
         if (display_design == 3) { 
-            // Vykreslí image24 a zjistí jeho velikost
+
             oled_write_raw_P(image24, sizeof(image24));
         }
 
         break;
 
     case 2:
-        // Vykreslení obrázku pro vrstvu 2
+
         if (display_design == 0) { 
-            // Vykreslí image31 a zjistí jeho velikost
+
             oled_write_raw_P(image31, sizeof(image31));
         }
 
         if (display_design == 1) { 
-            // Vykreslí image32 a zjistí jeho velikost
+
             oled_write_raw_P(image32, sizeof(image32));
         }
 
         if (display_design == 2) { 
-            // Vykreslí image33 a zjistí jeho velikost
+
             oled_write_raw_P(image33, sizeof(image33));
         }
 
         if (display_design == 3) { 
-            // Vykreslí image34 a zjistí jeho velikost
+
             oled_write_raw_P(image34, sizeof(image34));
         }
         break;
 
     case 3:
-        // Vykreslení obrázku pro vrstvu 3
+
         if (display_design == 0) { 
-            // Vykreslí image41 a zjistí jeho velikost
+
             oled_write_raw_P(image41, sizeof(image41));
         }
 
         if (display_design == 1) { 
-            // Vykreslí image42 a zjistí jeho velikost
+
             oled_write_raw_P(image42, sizeof(image42));
         }
 
         if (display_design == 2) { 
-            // Vykreslí image43 a zjistí jeho velikost
+
             oled_write_raw_P(image43, sizeof(image43));
         }
 
         if (display_design == 3) { 
-            // Vykreslí image44 a zjistí jeho velikost
+
             oled_write_raw_P(image44, sizeof(image44));
         }
         break;
 
          default:
-            // Zobrazení textu "Undefined" pro neznámé vrstvy
+
          oled_write_raw_P(image11, sizeof(image11));
-    
-    // Zde by měly být případné další case větve (např. case 4 pro imageA5)
+
 }
-    
+
     return false;
 }
 #endif
