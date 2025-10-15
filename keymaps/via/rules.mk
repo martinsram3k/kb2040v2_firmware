@@ -1,14 +1,14 @@
 # rules.mk
 
-VIA_ENABLE = yes // VIA support
-OLED_ENABLE = yes // OLED display support
-OLED_DRIVER = ssd1306 // OLED driver
-OLED_TRANSPORT = i2c // OLED transport protocol
+VIA_ENABLE = yes 
+OLED_ENABLE = yes 
+OLED_DRIVER = ssd1306 
+OLED_TRANSPORT = i2c 
 
-BOOTMAGIC_ENABLE = yes // Bootmagic
+BOOTMAGIC_ENABLE = yes
 
-HAPTIC_ENABLE = yes // Haptic feedback support
-HAPTIC_DRIVER = solenoid // Haptic driver
+HAPTIC_ENABLE = yes 
+HAPTIC_DRIVER = solenoid 
 
 QMK_C_DEFS += -DKEYBOARD_USER_ENABLE
 
