@@ -5,8 +5,6 @@
 #define OLED_DRIVER_ENABLE yes
 #define OLED_DISPLAY_ADDRESS 0x3C  // Adresa I2C displeje OLED
 
-#define I2C_SCL_PIN GP19 // Pin SCL I2C
-#define I2C_SDA_PIN GP10 // Pin SDA I2C
 
 #define I2C0_SCL_PIN I2C_SCL_PIN
 #define I2C0_SDA_PIN I2C_SDA_PIN
