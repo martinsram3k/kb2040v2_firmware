@@ -13,7 +13,7 @@
 #define OLED_TIMEOUT 20000 // Vypnutí OLED po nečinnosti v ms
 #define OLED_BRIGHTNESS 255 // Jas OLED (0-255)
 
-#define BOOTMAGIC_ROW 0 // Řádek pro Bootmagic (tlačítko v levém horním rohu)
+#define BOOTMAGIC_ROW 1 // Řádek pro Bootmagic (tlačítko v levém horním rohu)
 #define BOOTMAGIC_COLUMN 0 // Sloupec pro Bootmagic (tlačítko v levém horním rohu)
 
 #define SOLENOID_PIN GP18 // Pin pro haptiku
